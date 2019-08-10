@@ -13,14 +13,14 @@ def test(url_file, dir, id=0):
     if os.path.exists(filepath):
         print("Already downloaded: %s" % filepath)
     else:
-        print("Thread: %d, downloading %s" % (id, url_file))
-        logging.info("Thread: %d, downloading %s" % (id, url_file))
+        print("Thread: %d, try downloading %s" % (id, url_file))
+        logging.info("Thread: %d, try downloading %s" % (id, url_file))
         headers = {'Proxy-Connection': 'keep-alive'}
         r = requests.get(url_file, stream=True, headers=headers)
         # length = float(r.headers['content-length'])
         # print(length)
-        print("Thread %d, saving to %s" % (id, filepath))
-        logging.info("Thread %d, saving to %s" % (id, filepath))
+        print("Thread %d, begin to save to %s" % (id, filepath))
+        logging.info("Thread %d, begin to save to %s" % (id, filepath))
         with open(filepath, 'wb') as f:
         # f = open("file_path", "wb")
             # chunk是指定每次写入的大小，每次只写了512byte
@@ -28,6 +28,7 @@ def test(url_file, dir, id=0):
                 if chunk:
                     f.write(chunk)
         print("Thread %d, Finish %s" % (id, filepath))
+        logging.info("Thread %d, Finish %s" % (id, filepath))
 
 class MultiThread(Thread):
     def __init__(self, worklist, outdir, id):
@@ -69,6 +70,7 @@ if __name__ == '__main__':
     # for url in filelist:
     #     test(url, dir)
 
+    logging.info("Begin download...")
     threadlst = []
     threadnum = 8
     for i in range(threadnum):
