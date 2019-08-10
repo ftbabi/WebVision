@@ -27,6 +27,7 @@ def test(url_file, dir, id=0):
             for chunk in tqdm(r.iter_content(chunk_size=512)):
                 if chunk:
                     f.write(chunk)
+        print("Thread %d, Finish %s" % (id, filepath))
 
 class MultiThread(Thread):
     def __init__(self, worklist, outdir, id):

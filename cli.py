@@ -108,7 +108,7 @@ def init(args):
     logging.info(json.dumps(state) + '\n')
 
     # Calculate number of epochs wrt batch size
-    args.epochs = args.epochs * 128 // args.batch_size
+    # args.epochs = args.epochs * 128 // args.batch_size
     # args.schedule = [x * 128 // args.batch_size for x in args.schedule]
 
     # Init dataset

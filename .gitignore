@@ -3,4 +3,4 @@
 *.tar
 /checkpoints/*
 *.pdf
-.DS_Store
+*.DS_Store
