@@ -2,3 +2,5 @@
 /log/*
 *.tar
 /checkpoints/*
+*.pdf
+.DS_Store
