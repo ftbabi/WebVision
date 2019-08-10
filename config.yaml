@@ -1,0 +1,15 @@
+# train_root: '../data'
+DATA_BASE: './data/2017'
+INFO: './data/2017/info'
+META: './data/2017/meta'
+DATA_SOURCE:
+  - 'google'
+  - 'flickr'
+# rel nor are huchi
+relation: 1
+normalize: 0
+# both 0 is : label in title则title
+title: 0
+desc: 0
+
+# Refer to devkit/webvision.config.py as well

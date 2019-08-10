@@ -1,0 +1,14 @@
+pip install nltk
+pip install tensorflow
+pip install bert-serving-server
+pip install bert-serving-client
+pip install matplotlib
+pip install PyYAML
+pip install scikit-image
+pip install requests
+pip install tqdm
+pip install argparse
+pip install jieba
+pip install pandas
+pip install torch
+pip install torchvision
