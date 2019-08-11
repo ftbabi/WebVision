@@ -55,7 +55,7 @@ def test_pause(url_file, dir, id=0, block=512, headers = {}):
             headers['Range'] = "bytes=%d-" % (selfsize,)
     else:
         return -1
-    r = requests.get(url_file, stream=True, verify=False, headers=headers)
+    r = requests.get(url_file, stream=True, headers=headers)
     status_code = r.status_code
     if total > 0:
         print("[+] Size: %dKB" % (total / 1024))
