@@ -8,8 +8,8 @@ from os.path import join, isdir, basename, isfile
 from glob import glob
 
 # Global configuration
-# DATA_BASE = '/home/shaoyidi/VirtualenvProjects/myRA/WebVision/data/2018/'
-DATA_BASE = '/home/shaoyidi/VirtualenvProjects/myRA/WebVision/data/test/'
+DATA_BASE = '/home/shaoyidi/VirtualenvProjects/myRA/WebVision/data/2018/'
+# DATA_BASE = '/home/shaoyidi/VirtualenvProjects/myRA/WebVision/data/test/'
 INFO = join(DATA_BASE, 'info')
 DATA_SOURCE = ['google', 'flickr']
 TRAIN_FOLDER = join(DATA_BASE, 'train_images_256')

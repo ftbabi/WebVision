@@ -37,6 +37,11 @@ def test_pause(url_file, dir, id=0, block=512, headers = {}):
     selfsize = 0
     finished = False
     size = selfsize
+    if total > 0:
+        print("[+] Size: %dKB, %dB" % (total / 1024, total))
+    else:
+        print("[+] Size: None")
+    # return 0
     if flag:
         try:
             with open(filepath, 'rb') as f:
@@ -57,11 +62,6 @@ def test_pause(url_file, dir, id=0, block=512, headers = {}):
         return -1
     r = requests.get(url_file, stream=True, headers=headers)
     status_code = r.status_code
-    if total > 0:
-        print("[+] Size: %dKB" % (total / 1024))
-    else:
-        print("[+] Size: None")
-
     if status_code == 206:
         print("Continue to saving %s" % url_file)
         logging.info("Continue to saving %s" % url_file)
@@ -149,26 +149,27 @@ if __name__ == '__main__':
         # 'https://data.vision.ee.ethz.ch/cvl/webvision2018/google.tar',
         # 'https://data.vision.ee.ethz.ch/cvl/webvision2018/flickr.tar'
     ]
-    for i in range(19, 24):
+    for i in range(0, 24):
         image_url = 'https://data.vision.ee.ethz.ch/aeirikur/webvision2018/webvision_train_%02d' % i + '.tar'
         filelist.append(image_url)
 
     headers = {'Proxy-Connection': 'keep-alive'}
-    # for url in filelist:
+    for url in filelist:
         # test(url, dir)
         # print(support_continue(url))
-        # test_pause(url, dir, 0, 512, headers)
+        test_pause(url, dir, 0, 512, headers)
 
-    logging.info("Begin download...")
-    threadlst = []
-    threadnum = 4
-    for i in range(threadnum):
-        # print(cmdlst[i::4])
-        inputlst = filelist[i::threadnum]
-        # print(inputlst)
-        t = MultiThread(inputlst, dir, i)
-        threadlst.append(t)
-        # t.start()
-
-    for thread in threadlst:
-        thread.start()
+    # Formal Use
+    # logging.info("Begin download...")
+    # threadlst = []
+    # threadnum = 4
+    # for i in range(threadnum):
+    #     # print(cmdlst[i::4])
+    #     inputlst = filelist[i::threadnum]
+    #     # print(inputlst)
+    #     t = MultiThread(inputlst, dir, i)
+    #     threadlst.append(t)
+    #     # t.start()
+    #
+    # for thread in threadlst:
+    #     thread.start()

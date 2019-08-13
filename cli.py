@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import torchvision.datasets as dset
 import torchvision.transforms as transforms
 import logging
-from WebVision.train import train
+from WebVision.train import train, evaluate
 
 def parse():
     parser = argparse.ArgumentParser(description='Training on WebVision',
@@ -21,11 +21,11 @@ def parse():
     parser.add_argument('--shuffle', action='store_true', help='Shuffle the data', default=False)
 
     # Optimization options
-    parser.add_argument('--epochs', '-e', type=int, default=3, help='Number of epochs to train.')
+    parser.add_argument('--epochs', '-e', type=int, default=1, help='Number of epochs to train.')
     parser.add_argument('--batch_size', '-b', type=int, default=64, help='Batch size.')
     parser.add_argument('--learning_rate', '-lr', type=float, default=0.1, help='The Learning Rate.')
     parser.add_argument('--momentum', '-m', type=float, default=0.9, help='Momentum.')
-    # parser.add_argument('--decay', '-d', type=float, default=0.0005, help='Weight decay (L2 penalty).')
+    parser.add_argument('--decay', '-d', type=float, default=0.0001, help='Weight decay (L2 penalty).')
     # parser.add_argument('--test_bs', type=int, default=10)
     # parser.add_argument('--schedule', type=int, nargs='+', default=[150, 225],
     #                     help='Decrease learning rate at these epochs.')
@@ -38,8 +38,8 @@ def parse():
 
     # Architecture
     parser.add_argument('--classes', type=int, default=5000, help='Number of classes.')
-    parser.add_argument('--model', type=str, choices=['resnext50_32x4d', 'densenet121'],
-                        help='Choose among resnext50_32x4d/densenet121.', default='resnext50_32x4d')
+    parser.add_argument('--model', type=str, choices=['resnext50_32x4d', 'resnext101_32x8d', 'densenet121'],
+                        help='Choose among resnext50_32x4d/densenet121.', default='resnext101_32x8d')
 
     # parser.add_argument('--depth', type=int, default=29, help='Model depth.')
     # parser.add_argument('--cardinality', type=int, default=8, help='Model cardinality (group).')
@@ -54,7 +54,7 @@ def parse():
     parser.add_argument('--log', type=str, default='./', help='Log folder.')
 
     # Choices
-    parser.add_argument('--train', action='store_true', help='train the model', default=True)
+    parser.add_argument('--train', action='store_true', help='train the model', default=False)
     parser.add_argument('--evaluate', action='store_true', help='evaluate the model on dev set', default=False)
     parser.add_argument('--predict', action='store_true',
                         help='predict the answers for test set with trained model', default=False)
@@ -161,8 +161,11 @@ def init(args):
 if __name__ == '__main__':
     args = parse()
 
-    args.traindata = 'google'
-    args.batch_size = 4
+    # args.traindata = 'google'
+    # args.batch_size = 4
+    args.train = True
+    args.save = './checkpoints'
+    # args.load = './checkpoints/resnext50_32x4d-1.pt'
 
     init(args)
 
@@ -174,6 +177,8 @@ if __name__ == '__main__':
 
     if args.train:
         train(args)
+    if args.evaluate:
+        evaluate(args)
 
 
 

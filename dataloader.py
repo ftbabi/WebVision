@@ -1,6 +1,7 @@
 import yaml
 import json
 import os
+import logging
 from torch.utils.data import DataLoader, Dataset
 import pandas as pd
 import torchvision
@@ -30,9 +31,9 @@ class WebVisionImageDataset(Dataset):
             # train_content = info.loc[info['type'] == 'train']
             train_content = info
             if args.traindata == 'google':
-                ans = train_content.loc[train_content['source'] == 'google']
+                ans = train_content.loc[train_content['source'] == 'google', :]
             elif args.traindata == 'flickr':
-                ans = train_content.loc[train_content['source'] == 'flickr']
+                ans = train_content.loc[train_content['source'] == 'flickr', :]
             elif args.traindata == 'all':
                 ans = train_content
 
@@ -45,7 +46,28 @@ class WebVisionImageDataset(Dataset):
             # ans = info.loc[info['type']=='test']
             ans = info
 
+        ans = self.__checkvalid(ans)
+
         return ans
+
+    def __checkvalid(self, info):
+        invalid_files_idx = []
+        invalid_files_path = []
+        for index, row in info.iterrows():
+            if not os.path.exists(row['image_path']):
+                invalid_files_idx.append(index)
+                invalid_files_path.append(row['image_path'])
+
+        if invalid_files_idx:
+            print("Warning: %d files don't exist" % len(invalid_files_idx))
+            logging.warning("Warning: %d files don't exist" % len(invalid_files_idx))
+            for file in invalid_files_path:
+                logging.warning("==> %s" % file)
+            info.drop(invalid_files_idx, inplace=True)
+
+        return info
+
+
 
     def __len__(self):
         return len(self.df)
@@ -55,7 +77,7 @@ class WebVisionImageDataset(Dataset):
         img_path = img_line.loc['image_path']
         img_label = float(img_line.loc['label'])
         # image = io.imread(img_path)
-        image = Image.open(img_path)  # PIL.Image.Image对象
+        image = Image.open(img_path).convert('RGB')  # PIL.Image.Image对象
         # img_pil_1 = np.array(img_pil)
         # print(type(image))
 

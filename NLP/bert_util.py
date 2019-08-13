@@ -9,8 +9,19 @@ import matplotlib.pyplot as plt
 import logging
 import os
 import re
+import argparse
 from tqdm import tqdm
 from sklearn.cluster import KMeans
+
+DATA_BASE = '/home/shaoyidi/VirtualenvProjects/myRA/WebVision/data/2018/'
+INFO = os.path.join(DATA_BASE, 'info')
+DATA_SOURCE = ['google', 'flickr']
+META_FOLDER = os.path.join(DATA_BASE, 'meta')
+EMB = os.path.join(DATA_BASE, 'emb')
+QUERY_NUM = 12597
+FILTER_GOOGLE = os.path.join(INFO, 'filter_google.txt')
+FILTER_FLICKR = os.path.join(INFO, 'filter_flickr.txt')
+
 
 
 
@@ -174,6 +185,15 @@ class FilterMeta:
         # norm = np.linalg.norm(emb)
         return emb
 
+    def __selected(self, piece, label):
+        lpattern = r'+| '
+        label_split = re.split(lpattern, label)
+        for piece in label_split:
+            if piece.lower() in piece.lower():
+                return True
+
+        return False
+
     def __getSentence(self, title, desc, label):
         sentence = ""
         if self.take_title:
@@ -186,13 +206,17 @@ class FilterMeta:
         if not sentence:
             sentence = title + '. ' + desc
             pattern = r',|\.|;|\?|!|，|。|、|；|‘|’|【|】|·|！|…|\||\]|\[|\(|\)'
+            # pattern = r',|\.|;|\?|!|，|。|、|；|‘|’|【|】|·|！|…|\||\]|\[|\(|\)'
             split_sent = re.split(pattern, sentence)
-            result = title + '.'
+            cand = []
             for sent in split_sent:
                 sent = sent.strip()
-                if sent and label.lower() in sent.lower():
-                    sentence = sent + '.'
-                    break
+                if sent and self.__selected(sent, label):
+                    cand.append(sent)
+                    # sentence = sent + '.'
+                    # break
+            if len(cand) > 0:
+                sentence = ','.join(cand) + '.'
 
         return sentence
 
@@ -221,6 +245,47 @@ class FilterMeta:
         writer.close()
 
 
+class BertHandler:
+    def __init__(self, num, max_seq_len):
+        self.num = num
+        self.max_seq_len = max_seq_len
+
+    def genQueryEmb(self):
+        # Init
+        queryfile = 'queries.txt'
+        querypath = os.path.join(INFO, queryfile)
+
+        # Read and Emb
+        queryloader = MetaLoader(querypath)
+        query = queryloader.getData()
+        qhandler = FilterQuery()
+        qres = np.array(qhandler.fit(query))
+
+        # Save
+        savepath = os.path.join(EMB, queryfile)
+        np.savetxt(savepath, qres, fmt='%f', delimiter=',')
+
+    def genMetaEmb(self):
+        pass
+        # Init
+        # metatest = ('../data/2017/meta/google/q%04d' % self.num) + '.json'
+        # metaloader = MetaLoader(metatest)
+        # meta = metaloader.getData()
+        # handler = FilterMeta()
+        # label_line = query[num - 1]
+        # label = label_line.split(' ')[-1].strip()
+        # res = handler.fit(meta, label)
+
+    def loadQueryEmb(self):
+        pass
+
+    def loadMetaEmb(self):
+        pass
+
+    def filter(self):
+        pass
+
+
 class TinyTest:
     def __init__(self, num, max_seq_len):
         self.num = num
@@ -229,23 +294,77 @@ class TinyTest:
     def getNum(self):
         return self.num
 
-    def getQueryDataEmb(self, savemeta, savelabel):
-        querypath = '../data/2017/info/queries_google.txt'
+    def __getLabel(self, labelline):
+        label_idx = labelline.find(' ')
+        label = labelline[label_idx+1:]
+
+        return label.strip()
+
+    def getQueryDataEmb(self):
+        print("Get embeddings")
+        # Init Queries
+        queryfile = 'queries.txt'
+        querypath = os.path.join(INFO, queryfile)
+
+        # Read and Emb
+        print("Load queries from %s" % querypath)
+        logging.info("Load queries from %s" % querypath)
         queryloader = MetaLoader(querypath)
         query = queryloader.getData()
         qhandler = FilterQuery()
+        print("Embed queries")
+        logging.info("Embed queries")
         qres = np.array(qhandler.fit(query))
+        print("Finish queries emb")
+        logging.info("Finish queries emb")
 
-        metatest = ('../data/2017/meta/google/q%04d' % self.num) + '.json'
-        metaloader = MetaLoader(metatest)
-        meta = metaloader.getData()
-        handler = FilterMeta()
-        label_line = query[num-1]
-        label = label_line.split(' ')[-1].strip()
-        res = handler.fit(meta, label)
+        # Save Query
+        savequery = os.path.join(EMB, queryfile)
+        np.savetxt(savequery, qres, fmt='%f', delimiter=',')
+        print("Queries emb save to %s" % savequery)
+        logging.info("Queries emb save to %s" % savequery)
 
-        np.savetxt(savemeta, res, fmt='%f', delimiter=',')
-        np.savetxt(savelabel, qres, fmt='%f', delimiter=',')
+        print("Process meta")
+        logging.info("Process meta")
+        for dataset in DATA_SOURCE:
+            dataset_folder = os.path.join(META_FOLDER, dataset)
+            for i in range(1, QUERY_NUM+1):
+                # Init
+                filename = 'q%05d.json' % i
+                metapath = os.path.join(dataset_folder, filename)
+
+                # Read and Emb
+                print("==> Load meta from %s" % metapath)
+                logging.info("==> Load meta from %s" % metapath)
+                metaloader = MetaLoader(metapath)
+                meta = metaloader.getData()
+                handler = FilterMeta()
+                label_line = query[i-1]
+                # label = label_line.split(' ')[-1].strip()
+                label = self.__getLabel(label_line)
+                print("==> Embed meta")
+                logging.info("==> Embed meta")
+                res = handler.fit(meta, label)
+                print("==> Finish meta emb")
+                logging.info("==> Finish meta emb")
+
+                # Save meta
+                savemeta = os.path.join(EMB, dataset)
+                savemeta = os.path.join(savemeta, 'q%05d.txt'%i)
+                np.savetxt(savemeta, res, fmt='%f', delimiter=',')
+                print("==> Meta emb save to %s" % savemeta)
+                logging.info("==> Meta emb save to %s" % savemeta)
+
+            # metatest = ('../data/2017/meta/google/q%04d' % self.num) + '.json'
+            # metaloader = MetaLoader(metatest)
+            # meta = metaloader.getData()
+            # handler = FilterMeta()
+            # label_line = query[num-1]
+            # label = label_line.split(' ')[-1].strip()
+            # res = handler.fit(meta, label)
+
+    def filterFormal(self):
+        pass
 
     def loadQueryDataEmb(self, savemeta, savelabel):
         metaemb = np.loadtxt(savemeta, delimiter=',')
@@ -351,15 +470,8 @@ class TinyTest:
 
         return outputpath
 
-if __name__ == '__main__':
-    bert_util_log = '../log/bert_util.log'
-
-    logging.basicConfig(level=logging.INFO,  # 定义输出到文件的log级别，
-                        format='%(asctime)s  %(filename)s : %(levelname)s  %(message)s',  # 定义输出log的格式
-                        datefmt='%Y-%m-%d %A %H:%M:%S',  # 时间
-                        filename=bert_util_log,  # log文件名
-                        filemode='a')
-    test()
+def informal_use():
+    # test()
     # testdraw()
 
     # num = 1
@@ -404,29 +516,105 @@ if __name__ == '__main__':
     #         f.write(str(i))
     #         f.write('\n')
 
-# emb
+    # emb
     tttest = TinyTest(num=1, max_seq_len=128)
     num = tttest.getNum()
+    # tttest.getQueryDataEmb(metapath, labelpath)
+
     scaler = 1
     normalize = '_word'
-    metapath = './metainfo' + str(num) + '_128' + normalize + '.txt'
-    labelpath = './labelinfo' + str(num) + '_128' + normalize + '.txt'
+    # metapath = './metainfo' + str(num) + '_128' + normalize + '.txt'
+    # labelpath = './labelinfo' + str(num) + '_128' + normalize + '.txt'
+    folder = os.path.join(EMB, 'google')
+    metapath = os.path.join(folder, 'q%05d.txt' % num)
+    labelpath = os.path.join(EMB, 'queries.txt')
     drawpath = './draw' + str(num) + '_128' + normalize + '.txt'
-#     # tttest.getQueryDataEmb(metapath, labelpath)
+
+    # Load emb
     queryemb, metaemb = tttest.loadQueryDataEmb(metapath, labelpath)
-#     # dotpro = tttest.dotprod(queryemb[num-1, :], metaemb)
-    dot = tttest.distance(queryemb[num-1, :], metaemb)
-#     # np.savetxt(drawpath, dotpro, delimiter=',')
-#
-#     # dot = np.loadtxt(drawpath, delimiter=',')
+    #     # dotpro = tttest.dotprod(queryemb[num-1, :], metaemb)
+    dot = tttest.distance(queryemb[num - 1, :], metaemb)
+    #     # np.savetxt(drawpath, dotpro, delimiter=',')
+    #
+    #     # dot = np.loadtxt(drawpath, delimiter=',')
     tttest.draw(dot, scaler)
-#
-    metatest = ('../data/2017/meta/google/q%04d' % num) + '.json'
+    #
+    metatest = os.path.join(folder, 'q%05d.txt' % num)
     metaloader = MetaLoader(metatest)
     meta = metaloader.getData()
     # tttest.filter(meta, dot, 12, scaler)
 
-# Visualize using tensorboard
-    path = tttest.cluster_path(metaemb, dot, metainfo=meta, n_clusters=4)
-    handler = FilterMeta()
-    handler.visualize(metaemb, path)
+    # Visualize using tensorboard
+    #     path = tttest.cluster_path(metaemb, dot, metainfo=meta, n_clusters=4)
+    #     handler = FilterMeta()
+    #     handler.visualize(metaemb, path)
+
+
+def run():
+    parser = argparse.ArgumentParser(description='Training on WebVision',
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    # parser.add_argument('--traindata', type=str, choices=['google', 'flickr', 'all'],
+    #                     help='Choose among google/flickr/all.', default='all')
+    parser.add_argument('--genemb', action='store_true', help='Generate the embeddings', default=False)
+    parser.add_argument('--filter', action='store_true', help='Filter the embeddings', default=False)
+    parser.add_argument('--maxseqlen', '-l', type=int, default=128, help='Max sequeence length')
+    # Optimization options
+    # parser.add_argument('--epochs', '-e', type=int, default=1, help='Number of epochs to train.')
+    # parser.add_argument('--batch_size', '-b', type=int, default=64, help='Batch size.')
+    # parser.add_argument('--learning_rate', '-lr', type=float, default=0.1, help='The Learning Rate.')
+    # parser.add_argument('--momentum', '-m', type=float, default=0.9, help='Momentum.')
+    # parser.add_argument('--decay', '-d', type=float, default=0.0001, help='Weight decay (L2 penalty).')
+    # # parser.add_argument('--test_bs', type=int, default=10)
+    # # parser.add_argument('--schedule', type=int, nargs='+', default=[150, 225],
+    # #                     help='Decrease learning rate at these epochs.')
+    # # parser.add_argument('--gamma', type=float, default=0.1, help='LR is multiplied by gamma on schedule.')
+    #
+    # # Checkpoints
+    # parser.add_argument('--save', '-s', type=str, default='', help='Folder to save checkpoints.')
+    # parser.add_argument('--load', '-l', type=str, default='', help='Checkpoint path to resume / test.')
+    # # parser.add_argument('--test', '-t', action='store_true', help='Test only flag.')
+    #
+    # # Architecture
+    # parser.add_argument('--classes', type=int, default=5000, help='Number of classes.')
+    # parser.add_argument('--model', type=str, choices=['resnext50_32x4d', 'resnext101_32x8d', 'densenet121'],
+    #                     help='Choose among resnext50_32x4d/densenet121.', default='resnext101_32x8d')
+    #
+    # # parser.add_argument('--depth', type=int, default=29, help='Model depth.')
+    # # parser.add_argument('--cardinality', type=int, default=8, help='Model cardinality (group).')
+    # # parser.add_argument('--base_width', type=int, default=64, help='Number of channels in each group.')
+    # # parser.add_argument('--widen_factor', type=int, default=4, help='Widen factor. 4 -> 64, 8 -> 128, ...')
+    #
+    # # Acceleration
+    # parser.add_argument('--ngpu', type=int, default=1, help='0 = CPU.')
+    # # parser.add_argument('--prefetch', type=int, default=2, help='Pre-fetching threads.')
+    #
+    # # i/o
+    # parser.add_argument('--log', type=str, default='./', help='Log folder.')
+    #
+    # # Choices
+    # parser.add_argument('--train', action='store_true', help='train the model', default=False)
+    # parser.add_argument('--evaluate', action='store_true', help='evaluate the model on dev set', default=False)
+    # parser.add_argument('--predict', action='store_true',
+    #                     help='predict the answers for test set with trained model', default=False)
+
+    # Parse
+    args = parser.parse_args()
+
+    handler = TinyTest(1, args.maxseqlen)
+    if args.genemb:
+        handler.getQueryDataEmb()
+    if args.filter:
+        handler.filterFormal()
+
+
+if __name__ == '__main__':
+    bert_util_log = '/home/shaoyidi/VirtualenvProjects/myRA/WebVision/log/bert_util.log'
+
+    logging.basicConfig(level=logging.INFO,  # 定义输出到文件的log级别，
+                        format='%(asctime)s  %(filename)s : %(levelname)s  %(message)s',  # 定义输出log的格式
+                        datefmt='%Y-%m-%d %A %H:%M:%S',  # 时间
+                        filename=bert_util_log,  # log文件名
+                        filemode='a')
+
+    # informal_use()
+    run()
