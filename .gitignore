@@ -4,3 +4,4 @@
 /checkpoints/*
 *.pdf
 *.DS_Store
+/NLP/model

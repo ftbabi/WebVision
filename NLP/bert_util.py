@@ -12,7 +12,8 @@ import argparse
 from tqdm import tqdm
 from sklearn.cluster import KMeans
 
-DATA_BASE = '/home/shaoyidi/VirtualenvProjects/myRA/WebVision/data/2018/'
+# DATA_BASE = '/home/shaoyidi/VirtualenvProjects/myRA/WebVision/data/2018/'
+DATA_BASE = '/home/ydshao/VirtualProjects/WebVision/data/2018'
 INFO = os.path.join(DATA_BASE, 'info')
 DATA_SOURCE = ['google', 'flickr']
 META_FOLDER = os.path.join(DATA_BASE, 'meta')
