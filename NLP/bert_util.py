@@ -749,7 +749,10 @@ def run():
 
 
 if __name__ == '__main__':
-    bert_util_log = '/home/shaoyidi/VirtualenvProjects/myRA/WebVision/log/bert_util.log'
+    bert_util_log = '/home/ydshao/VirtualProjects/WebVision/log/bert_util.log'
+    if not os.path.exists(bert_util_log):
+        print("%s not exists" % bert_util_log)
+        exit(-1)
 
     logging.basicConfig(level=logging.INFO,  # 定义输出到文件的log级别，
                         format='%(asctime)s  %(filename)s : %(levelname)s  %(message)s',  # 定义输出log的格式

@@ -9,7 +9,9 @@ import time
 import matplotlib.pyplot as plt
 
 def test():
-    srcdir = '/home/shaoyidi/Downloads'
+    # srcdir = '/home/shaoyidi/Downloads'
+    # tardir = '/home/shaoyidi/VirtualenvProjects/myRA/WebVision/data/2018/train_images_256'
+    srcdir = '/home/ydshao/VirtualProjects/WebVision/data/2018/downloads'
     tardir = '/home/shaoyidi/VirtualenvProjects/myRA/WebVision/data/2018/train_images_256'
     filelist = []
     cmdlist = []
