@@ -1,5 +1,7 @@
+import sys
+sys.path.append("../")
 from bert_serving.client import BertClient
-from WebVision.dataloader import MetaLoader
+from dataloader import MetaLoader
 import yaml
 import tensorflow as tf
 from tensorflow.contrib.tensorboard.plugins import projector
@@ -397,7 +399,7 @@ class TinyTest:
         print("Finish distance")
         logging.info("Finish distance")
 
-    def filterFormal(self, queryfile='queries.txt', threshold=0.4):
+    def filterFormal(self, queryfile='queries.txt', threshold=0.6):
         # Load Query
         # loadquery = os.path.join(EMB, queryfile)
         # print("Load queries emb from %s" % loadquery)
