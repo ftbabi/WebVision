@@ -1,6 +1,5 @@
 from bert_serving.client import BertClient
 from WebVision.dataloader import MetaLoader
-from WebVision.dataloader import QuerySynsetMapLoader
 import yaml
 import tensorflow as tf
 from tensorflow.contrib.tensorboard.plugins import projector
@@ -18,6 +17,7 @@ INFO = os.path.join(DATA_BASE, 'info')
 DATA_SOURCE = ['google', 'flickr']
 META_FOLDER = os.path.join(DATA_BASE, 'meta')
 EMB = os.path.join(DATA_BASE, 'emb')
+DIS = os.path.join(DATA_BASE, 'distance')
 QUERY_NUM = 12597
 FILTER_GOOGLE = os.path.join(INFO, 'filter_google.txt')
 FILTER_FLICKR = os.path.join(INFO, 'filter_flickr.txt')
@@ -118,9 +118,9 @@ class FilterQuery:
         result = []
         count = 20
         for i in tqdm(metalist):
-            count -= 1
-            if count <= 0:
-                break
+            # count -= 1
+            # if count <= 0:
+            #     break
             line = i.split(' ')
             query = line[-1].strip()
             emb = self.__emb(query)
@@ -186,10 +186,11 @@ class FilterMeta:
         return emb
 
     def __selected(self, piece, label):
-        lpattern = r'+| '
+        lpattern = r'\+| '
+        # label = 'abc def'
         label_split = re.split(lpattern, label)
-        for piece in label_split:
-            if piece.lower() in piece.lower():
+        for pi in label_split:
+            if pi and pi.lower() in piece.lower():
                 return True
 
         return False
@@ -300,10 +301,9 @@ class TinyTest:
 
         return label.strip()
 
-    def getQueryDataEmb(self):
+    def getQueryDataEmb(self, queryfile='queries.txt'):
         print("Get embeddings")
         # Init Queries
-        queryfile = 'queries.txt'
         querypath = os.path.join(INFO, queryfile)
 
         # Read and Emb
@@ -352,8 +352,8 @@ class TinyTest:
                 savemeta = os.path.join(EMB, dataset)
                 savemeta = os.path.join(savemeta, 'q%05d.txt'%i)
                 np.savetxt(savemeta, res, fmt='%f', delimiter=',')
-                print("==> Meta emb save to %s" % savemeta)
-                logging.info("==> Meta emb save to %s" % savemeta)
+                print("==> Meta emb saved to %s" % savemeta)
+                logging.info("==> Meta emb saved to %s" % savemeta)
 
             # metatest = ('../data/2017/meta/google/q%04d' % self.num) + '.json'
             # metaloader = MetaLoader(metatest)
@@ -362,9 +362,86 @@ class TinyTest:
             # label_line = query[num-1]
             # label = label_line.split(' ')[-1].strip()
             # res = handler.fit(meta, label)
+        print("Finish embedding")
+        logging.info("Finish embedding")
 
-    def filterFormal(self):
-        pass
+    def computeDistance(self, queryfile='queries.txt'):
+        # Load Query
+        loadquery = os.path.join(EMB, queryfile)
+        print("Load queries emb from %s" % loadquery)
+        logging.info("Load queries emb from %s" % loadquery)
+        queryemb = np.loadtxt(loadquery, delimiter=',')
+
+        print("Load meta emb")
+        logging.info("Load meta emb")
+        for dataset in DATA_SOURCE:
+            for i in range(1, QUERY_NUM + 1):
+                loadmeta = os.path.join(EMB, dataset)
+                loadmeta = os.path.join(loadmeta, 'q%05d.txt' % i)
+                print("==> Load meta emb from %s" % loadmeta)
+                logging.info("==> Load meta emb from %s" % loadmeta)
+                metaemb = np.loadtxt(loadmeta, delimiter=',')
+
+                print("==> Compute distance")
+                logging.info("==> Compute distance")
+                distance = self.distance(queryemb[i-1, :], metaemb)
+
+                # Save distance
+                savedis = os.path.join(DIS, dataset)
+                savedis = os.path.join(savedis, 'q%05d.txt' % i)
+                np.savetxt(savedis, distance, fmt='%f', delimiter=',')
+                print("==> Distance saved to %s" % savedis)
+                logging.info("==> Distanced save to %s" % savedis)
+
+        print("Finish distance")
+        logging.info("Finish distance")
+
+    def filterFormal(self, queryfile='queries.txt', threshold=0.4):
+        # Load Query
+        # loadquery = os.path.join(EMB, queryfile)
+        # print("Load queries emb from %s" % loadquery)
+        # logging.info("Load queries emb from %s" % loadquery)
+        # queryemb = np.loadtxt(loadquery, delimiter=',')
+
+        print("Load meta emb")
+        logging.info("Load meta emb")
+        for dataset in DATA_SOURCE:
+            filter_list_path = os.path.join(INFO, "filter_%s.txt"%dataset)
+            total = 0
+            with open(filter_list_path, 'w') as f:
+                for i in range(1, QUERY_NUM + 1):
+                    # Load emb
+                    loadmeta = os.path.join(EMB, dataset)
+                    loadmeta = os.path.join(loadmeta, 'q%05d.txt' % i)
+                    print("==> Load meta emb from %s" % loadmeta)
+                    logging.info("==> Load meta emb from %s" % loadmeta)
+                    metaemb = np.loadtxt(loadmeta, delimiter=',')
+
+                    # Load distance
+                    loaddistance = os.path.join(DIS, dataset)
+                    loaddistance = os.path.join(loaddistance, 'q%05d.txt' % i)
+                    distance = np.loadtxt(loaddistance, delimiter=',')
+
+                    # Cluster
+                    print("==> Cluster")
+                    logging.info("==> Cluster")
+                    cluster_idx = self.__cluster(metaemb)
+
+                    # Get threshold and save ans
+                    clean_idx = self.__getCleanSet(distance, cluster_idx, threshold)
+                    squeeze_clean = np.hstack(clean_idx)
+                    ans = np.zeros(metaemb.shape[0], dtype=int)
+                    ans[squeeze_clean] = 1
+                    f.write('\n'.join([str(x) for x in ans]))
+                    f.write('\n')
+                    print("==> Saved part %d" % i)
+                    logging.info("==> Saved part %d" % i)
+                    total += metaemb.shape[0]
+            print("%s total: %d" % (dataset, total))
+            logging.info("%s total: %d" % (dataset, total))
+
+        print("Finish filter")
+        logging.info("Finish filter")
 
     def loadQueryDataEmb(self, savemeta, savelabel):
         metaemb = np.loadtxt(savemeta, delimiter=',')
@@ -407,6 +484,7 @@ class TinyTest:
         selected = []
         ind_scr = {}
         ind = 0
+
         for order, i in enumerate(dot):
             total += 1
             if i > thresh/scaler:
@@ -427,6 +505,41 @@ class TinyTest:
         print("Filtered files: %d/%d" % (count, total))
         logging.info("Filtered files: %d/%d" % (count, total))
 
+    def __cluster(self, meta, n_clusters=5):
+        estimator = KMeans(n_clusters=n_clusters)
+        estimator.fit(meta)
+        label_pred = estimator.labels_
+        selected = []
+
+        for i in range(n_clusters):
+            # sqrt_buff.append([])
+            selected.append(np.where(label_pred == i)[0])
+
+        return selected
+
+    def __getCleanSet(self, score, cluster_id, threshold):
+        cluster_score = {}
+        for order, cluster in enumerate(cluster_id):
+            cur_score = np.array(score[cluster])
+            means = np.mean(cur_score)
+            var = np.var(cur_score)
+            cluster_score[order] = means
+
+        # Rise
+        sorted_cluster = sorted(cluster_score.items(), key=lambda x: x[1])
+        total = score.shape[0]
+        summary = 0
+        result = []
+        for cell in sorted_cluster:
+            group_num = cell[0]
+            summary += len(cluster_id[group_num])
+            result.append(cluster_id[group_num])
+            if summary >= total * threshold:
+                break
+
+        return result
+
+
     def cluster_path(self, meta, score, metainfo=[], n_clusters=3,
                      outputpath='/home/shaoyidi/VirtualenvProjects/myRA/WebVision/NLP/cluster.tsv',
                      showoff=30):
@@ -442,11 +555,14 @@ class TinyTest:
             out_buff = {}
             sqrt_buff = []
             summ = []
+            selected = []
             for i in range(n_clusters):
                 out_buff[i] = []
                 sqrt_buff.append([])
+                selected.append(np.where(label_pred==i)[0])
                 summ.append(np.where(label_pred==i)[0].shape[0])
 
+            self.__getCleanSet(score, selected, 0.4)
 
             for order, pred in enumerate(label_pred):
                 if len(out_buff[pred]) <= showoff:
@@ -523,11 +639,11 @@ def informal_use():
 
     scaler = 1
     normalize = '_word'
-    # metapath = './metainfo' + str(num) + '_128' + normalize + '.txt'
-    # labelpath = './labelinfo' + str(num) + '_128' + normalize + '.txt'
-    folder = os.path.join(EMB, 'google')
-    metapath = os.path.join(folder, 'q%05d.txt' % num)
-    labelpath = os.path.join(EMB, 'queries.txt')
+    metapath = './metainfo' + str(num) + '_128' + normalize + '.txt'
+    labelpath = './labelinfo' + str(num) + '_128' + normalize + '.txt'
+    # folder = os.path.join(EMB, 'google')
+    # metapath = os.path.join(folder, 'q%05d.txt' % num)
+    # labelpath = os.path.join(EMB, 'queries.txt')
     drawpath = './draw' + str(num) + '_128' + normalize + '.txt'
 
     # Load emb
@@ -539,15 +655,31 @@ def informal_use():
     #     # dot = np.loadtxt(drawpath, delimiter=',')
     tttest.draw(dot, scaler)
     #
-    metatest = os.path.join(folder, 'q%05d.txt' % num)
+    # metatest = os.path.join(folder, 'q%05d.txt' % num)
+    metatest = '../data/2017/meta/google/q%04d.json' % num
     metaloader = MetaLoader(metatest)
     meta = metaloader.getData()
     # tttest.filter(meta, dot, 12, scaler)
 
     # Visualize using tensorboard
-    #     path = tttest.cluster_path(metaemb, dot, metainfo=meta, n_clusters=4)
+    path = tttest.cluster_path(metaemb, dot, metainfo=meta, n_clusters=4)
     #     handler = FilterMeta()
     #     handler.visualize(metaemb, path)
+
+    a = np.array([0,1,0,1,0,0,1,5, 6, 5, 6])
+    s1 = np.where(a==1)[0]
+    s5 = np.where(a==5)[0]
+    s6 = np.where(a==6)[0]
+    a_lst = []
+    a_lst.append(s1)
+    a_lst.append(s5)
+    a_lst.append(s6)
+    selected = np.hstack(a_lst)
+
+    b = np.zeros(a.shape[0], dtype=int)
+    b[selected] = 2
+    test_str = '-'.join([str(x) for x in b])
+    print(test_str)
 
 
 def run():
@@ -557,6 +689,8 @@ def run():
     #                     help='Choose among google/flickr/all.', default='all')
     parser.add_argument('--genemb', action='store_true', help='Generate the embeddings', default=False)
     parser.add_argument('--filter', action='store_true', help='Filter the embeddings', default=False)
+    parser.add_argument('--compute', action='store_true', help='Compute distance', default=False)
+    # parser.add_argument('--cluster', action='store_true', help='Cluster', default=False)
     parser.add_argument('--maxseqlen', '-l', type=int, default=128, help='Max sequeence length')
     # Optimization options
     # parser.add_argument('--epochs', '-e', type=int, default=1, help='Number of epochs to train.')
@@ -600,9 +734,13 @@ def run():
     # Parse
     args = parser.parse_args()
 
+    args.genemb = True
+
     handler = TinyTest(1, args.maxseqlen)
     if args.genemb:
         handler.getQueryDataEmb()
+    if args.compute:
+        handler.computeDistance()
     if args.filter:
         handler.filterFormal()
 

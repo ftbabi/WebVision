@@ -14,6 +14,7 @@ INFO = join(DATA_BASE, 'info')
 DATA_SOURCE = ['google', 'flickr']
 TRAIN_FOLDER = join(DATA_BASE, 'train_images_256')
 VAL_FOLDER = join(DATA_BASE, 'val_images_256')
+VAL_DIVIDE_FOLDER = join(DATA_BASE, 'val_images_divide')
 TEST_FOLDER = join(DATA_BASE, 'test_images_256')
 META_FOLDER = join(DATA_BASE, 'meta')
 
