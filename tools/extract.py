@@ -12,7 +12,10 @@ def test():
     # srcdir = '/home/shaoyidi/Downloads'
     # tardir = '/home/shaoyidi/VirtualenvProjects/myRA/WebVision/data/2018/train_images_256'
     srcdir = '/home/ydshao/VirtualProjects/WebVision/data/2018/downloads'
-    tardir = '/home/shaoyidi/VirtualenvProjects/myRA/WebVision/data/2018/train_images_256'
+    tardir = '/home/ydshao/VirtualProjects/WebVision/data/2018/train_images_256'
+    if not os.path.exists(tardir):
+        print("%s not exist" % tardir)
+        exit(-1)
     filelist = []
     cmdlist = []
     for i in range(2, 33):
