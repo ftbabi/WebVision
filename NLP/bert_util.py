@@ -737,7 +737,7 @@ def run():
     # Parse
     args = parser.parse_args()
 
-    args.genemb = True
+    # args.genemb = True
 
     handler = TinyTest(1, args.maxseqlen)
     if args.genemb:
