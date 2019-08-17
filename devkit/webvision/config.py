@@ -108,7 +108,15 @@ def LoadTrain():
         meta = _ParseTextFile(join(INFO, 'train_meta_list_%s.txt' % (dataset)),
                               ['meta_path', 'row_number'])
         meta['meta_path'] = meta.meta_path.map(lambda x: join(META_FOLDER, x))
-        all_train_data.append(trn.join(meta[['meta_path']]))
+
+        # Load filter
+        filterinfo = _ParseTextFile(
+            join(INFO, 'filter_%s.txt' % (dataset)),
+            ['selected']
+        )
+
+        all_train_data.append(trn.join([meta[['meta_path']], filterinfo['selected']]))
+
     training_df = pd.concat(all_train_data)
     training_df['image_path'] = training_df['image_id'].map(
         lambda x: join(TRAIN_FOLDER, x))

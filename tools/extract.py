@@ -18,7 +18,7 @@ def test():
         exit(-1)
     filelist = []
     cmdlist = []
-    for i in range(2, 33):
+    for i in range(8, 33):
         filename = 'webvision_train_%02d.tar' % i
         filepath = os.path.join(srcdir, filename)
         filelist.append(filepath)

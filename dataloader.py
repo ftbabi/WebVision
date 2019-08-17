@@ -36,6 +36,15 @@ class WebVisionImageDataset(Dataset):
                 ans = train_content.loc[train_content['source'] == 'flickr', :]
             elif args.traindata == 'all':
                 ans = train_content
+            else:
+                print("No train data set specified")
+                exit(-1)
+
+            if args.filter:
+                ans = ans.loc[ans['selected'] == 'true', :]
+                if len(ans) <= 1:
+                    print("Filter key invalid, not \'true\'")
+                    exit(-1)
 
         elif val:
             info = LoadVal()

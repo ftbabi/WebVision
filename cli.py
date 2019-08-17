@@ -58,6 +58,7 @@ def parse():
     parser.add_argument('--evaluate', action='store_true', help='evaluate the model on dev set', default=False)
     parser.add_argument('--predict', action='store_true',
                         help='predict the answers for test set with trained model', default=False)
+    parser.add_argument('--filter', action='store_true', help='Use filtered set', default=False)
 
     # Train config
 
