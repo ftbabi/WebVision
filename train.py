@@ -9,7 +9,7 @@ import torchvision.transforms as transforms
 import torch.nn as nn
 
 from torch.utils.data import DataLoader
-from WebVision.dataloader import WebVisionImageDataset
+from dataloader import WebVisionImageDataset
 
 
 def mean_std():
@@ -38,10 +38,10 @@ def train(args):
         net, _ = loadmodel(args, device)
         optimizer = optim.SGD(net.parameters(), lr=args.learning_rate, momentum=args.momentum, weight_decay=args.decay)
     elif args.model == 'resnext50_32x4d':
-        net = models.resnext50_32x4d(num_classes=args.classes)
+        net = models.resnext50_32x4d(pretrained=args.pretrained, num_classes=args.classes)
         optimizer = optim.SGD(net.parameters(), lr=args.learning_rate, momentum=args.momentum, weight_decay=args.decay)
     elif args.model == 'resnext101_32x8d':
-        net = models.resnext101_32x8d(num_classes=args.classes)
+        net = models.resnext101_32x8d(pretrained=args.pretrained, num_classes=args.classes)
         optimizer = optim.SGD(net.parameters(), lr=args.learning_rate, momentum=args.momentum, weight_decay=args.decay)
 
     # Allocate CNN on GPUs
@@ -66,13 +66,13 @@ def train(args):
 
     print("Loading training data")
     wv_dataset = WebVisionImageDataset(args, transform=train_transform)
-    trainloader = DataLoader(wv_dataset, batch_size=args.batch_size, shuffle=args.shuffle)
+    trainloader = DataLoader(wv_dataset, batch_size=args.batch_size, shuffle=args.shuffle, num_workers=args.ngpu)
     # wv_dataset = 1
     # trainloader = 1
 
     print("Loading validation data")
     val_dataset = WebVisionImageDataset(args, train=False, val=True, test=False, transform=test_transform)
-    validateloader = DataLoader(val_dataset, batch_size=args.batch_size)
+    validateloader = DataLoader(val_dataset, batch_size=args.batch_size, num_workers=args.ngpu)
 
     globalstep = 0
     globalepoch = 0
@@ -106,9 +106,14 @@ def train(args):
                       (epoch + 1, step + 1, running_loss / 10))
                 running_loss = 0.0
                 # Acc on Val
+            if step % 5000 == 4999:
+                # eval
                 net.eval()
                 validation(net, validateloader, device, step)
                 net.train()
+        net.eval()
+        validation(net, validateloader, device, step)
+        net.train()
         during = time.time() - start
         print("Epoch %d cost: %d" % (epoch, during))
         logging.info("Epoch %d cost: %d" % (epoch, during))
@@ -134,6 +139,7 @@ def train(args):
     return net
 
 def validation(net, validateloader, device, step):
+    start_time = time.time()
     correct = 0
     total = 0
     with torch.no_grad():
@@ -145,11 +151,11 @@ def validation(net, validateloader, device, step):
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
-
-    print('Iter: %d, Accuracy of the network on the validation set: %f %%' % (
-                step, 100 * correct / total))
-    logging.info('Iter: %d, Accuracy of the network on the validation set: %f %%' % (
-                step, 100 * correct / total))
+    during = time.time() - start_time
+    print('Iter: %d, Accuracy of the network on the validation set: %f %% %d/%d, Val time cost: %d' % (
+                step, 100 * correct / total, correct, total, during))
+    logging.info('Iter: %d, Accuracy of the network on the validation set: %f %% %d/%d, Val time cost: %d' % (
+                step, 100 * correct / total, correct, total, during))
 
 def loadmodel(args, device):
     checkpath = args.load
@@ -214,6 +220,10 @@ def evaluate(args):
     mean, std = mean_std()
 
     net, _ = loadmodel(args, device)
+    # Allocate CNN on GPUs
+    if torch.cuda.device_count() > 1:
+        print("Use ", torch.cuda.device_count(), " GPUs!")
+        net = nn.DataParallel(net)
     net.to(device)
 
     print("Test begin...")
@@ -221,7 +231,7 @@ def evaluate(args):
     test_transform = transforms.Compose(
         [transforms.Resize(224), transforms.CenterCrop(224), transforms.ToTensor(), transforms.Normalize(mean, std)])
     testdataset = WebVisionImageDataset(args, train=False, val=True, test=False, transform=test_transform)
-    testloader = DataLoader(testdataset, batch_size=args.batch_size)
+    testloader = DataLoader(testdataset, batch_size=args.batch_size, num_workers=args.ngpu)
 
     validation(net, testloader, device, 0)
 

@@ -9,7 +9,8 @@ from glob import glob
 
 # Global configuration
 # DATA_BASE = '/home/shaoyidi/VirtualenvProjects/myRA/WebVision/data/2018/'
-DATA_BASE = '/home/ydshao/VirtualProjects/WebVision/data/2018/'
+# DATA_BASE = '/home/ydshao/VirtualProjects/WebVision/data/2018/'
+DATA_BASE = '/mnt/SSD/webvision/2018/'
 INFO = join(DATA_BASE, 'info')
 DATA_SOURCE = ['google', 'flickr']
 TRAIN_FOLDER = join(DATA_BASE, 'train_images_256')
@@ -89,7 +90,7 @@ def ValidateIntegrity(info):
 
     return True
 
-def LoadTrain():
+def LoadTrain(argsfilter=False):
     '''
         Load the dataset info from the dataset
         '''
@@ -109,13 +110,16 @@ def LoadTrain():
                               ['meta_path', 'row_number'])
         meta['meta_path'] = meta.meta_path.map(lambda x: join(META_FOLDER, x))
 
-        # Load filter
-        filterinfo = _ParseTextFile(
-            join(INFO, 'filter_%s.txt' % (dataset)),
-            ['selected']
-        )
+        if argsfilter:
+            # Load filter
+            filterinfo = _ParseTextFile(
+                join(INFO, 'filter_%s.txt' % (dataset)),
+                ['selected']
+            )
 
-        all_train_data.append(trn.join([meta[['meta_path']], filterinfo['selected']]))
+            all_train_data.append(trn.join([meta[['meta_path']], filterinfo['selected']]))
+        else:
+            all_train_data.append(trn.join(meta[['meta_path']]))
 
     training_df = pd.concat(all_train_data)
     training_df['image_path'] = training_df['image_id'].map(

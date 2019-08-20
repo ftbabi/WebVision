@@ -8,7 +8,7 @@ import torchvision
 from skimage import io
 from PIL import Image
 import numpy as np
-from WebVision.devkit.webvision.config import LoadInfo, LoadTrain, LoadVal, LoadTest
+from devkit.webvision.config import LoadInfo, LoadTrain, LoadVal, LoadTest
 
 
 class WebVisionImageDataset(Dataset):
@@ -27,7 +27,7 @@ class WebVisionImageDataset(Dataset):
     def __load_dataset(self, args, train, val, test):
         # info = LoadInfo()
         if train:
-            info = LoadTrain()
+            info = LoadTrain(args.filter)
             # train_content = info.loc[info['type'] == 'train']
             train_content = info
             if args.traindata == 'google':
@@ -41,7 +41,7 @@ class WebVisionImageDataset(Dataset):
                 exit(-1)
 
             if args.filter:
-                ans = ans.loc[ans['selected'] == 'true', :]
+                ans = ans.loc[ans['selected'] == '1', :]
                 if len(ans) <= 1:
                     print("Filter key invalid, not \'true\'")
                     exit(-1)

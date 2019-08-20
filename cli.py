@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import torchvision.datasets as dset
 import torchvision.transforms as transforms
 import logging
-from WebVision.train import train, evaluate
+from train import train, evaluate
 
 def parse():
     parser = argparse.ArgumentParser(description='Training on WebVision',
@@ -26,6 +26,7 @@ def parse():
     parser.add_argument('--learning_rate', '-lr', type=float, default=0.1, help='The Learning Rate.')
     parser.add_argument('--momentum', '-m', type=float, default=0.9, help='Momentum.')
     parser.add_argument('--decay', '-d', type=float, default=0.0001, help='Weight decay (L2 penalty).')
+    parser.add_argument('--pretrained', action='store_true', help='Use pretrained model', default=False)
     # parser.add_argument('--test_bs', type=int, default=10)
     # parser.add_argument('--schedule', type=int, nargs='+', default=[150, 225],
     #                     help='Decrease learning rate at these epochs.')
@@ -47,7 +48,7 @@ def parse():
     # parser.add_argument('--widen_factor', type=int, default=4, help='Widen factor. 4 -> 64, 8 -> 128, ...')
 
     # Acceleration
-    parser.add_argument('--ngpu', type=int, default=1, help='0 = CPU.')
+    parser.add_argument('--ngpu', type=int, default=4, help='0 = CPU.')
     # parser.add_argument('--prefetch', type=int, default=2, help='Pre-fetching threads.')
 
     # i/o
@@ -97,8 +98,12 @@ def init(args):
         os.makedirs(args.log)
     logfile = os.path.join(args.log, 'webvision_cli.log')
     if not os.path.exists(logfile):
-        with open(logfile, 'w') as f:
-            f.write('')
+        print("%s not exist" % logfile)
+        exit(-1)
+    if args.save and not os.path.exists(args.save):
+        print("%s not exist" % args.save)
+        exit(-1)
+
 
     logging.basicConfig(level=logging.INFO,  # 定义输出到文件的log级别，
                         format='%(asctime)s  %(filename)s : %(levelname)s  %(message)s',  # 定义输出log的格式

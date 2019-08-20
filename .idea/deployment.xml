@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PublishConfigData">
+    <serverData>
+      <paths name="Copy of project-level server 'MMLAB'">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/VirtualenvProjects/WebVision" local="$PROJECT_DIR$" web="/" />
+          </mappings>
+          <excludedPaths>
+            <excludedPath path="/VirtualenvProjects/WebVision/checkpoints" />
+            <excludedPath path="/VirtualenvProjects/WebVision/NLP/model" />
+            <excludedPath local="true" path="$PROJECT_DIR$/data" />
+          </excludedPaths>
+        </serverdata>
+      </paths>
+    </serverData>
+  </component>
+</project>
