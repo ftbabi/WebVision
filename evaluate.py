@@ -17,7 +17,6 @@ from WebVision.train import validation
 
 
 def evaluate(args):
-    # TODO:
     # select optimizer
     if not args.load:
         print("Warning: No model checkpoint selected")

@@ -1,0 +1,1 @@
+python cli.py --model=alexnet --traindata=all --classes=2204 --weightschedule=20 --epochs=90 --ngpu=8 --batch_size=1024 --subset=10 --learning_rate=0.1 --save=/home/ydshao/VirtualenvProjects/WebVision/checkpoints/alexnet_1024_20_90 --log=/home/ydshao/VirtualenvProjects/WebVision/log --train --classid_as_label --random --shuffle

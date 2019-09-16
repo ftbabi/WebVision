@@ -5,6 +5,7 @@ from dataloader import MetaLoader
 import yaml
 import tensorflow as tf
 from tensorflow.contrib.tensorboard.plugins import projector
+from threading import Thread
 import numpy as np
 import matplotlib.pyplot as plt
 import logging
@@ -291,73 +292,107 @@ class BertHandler:
         pass
 
 
+def getLabel(labelline):
+    label_idx = labelline.find(' ')
+    label = labelline[label_idx+1:]
+
+    return label.strip()
+
+def processMeta(dataset, filenum, id, query):
+    dataset_folder = os.path.join(META_FOLDER, dataset)
+    filename = 'q%05d.json' % filenum
+    metapath = os.path.join(dataset_folder, filename)
+    savemeta = os.path.join(EMB, dataset)
+    savemeta = os.path.join(savemeta, 'q%05d.txt' % filenum)
+    if os.path.exists(savemeta):
+        # print("==> Thread %d: Meta emb exist %s" % (id, savemeta))
+        # logging.info("==> Thread %d: Meta emb exist %s" % (id, savemeta))
+        return
+
+    # Read and Emb
+    print("==> Thread %d: Load meta from %s" % (id, metapath))
+    logging.info("==> Thread %d: Load meta from %s" % (id, metapath))
+    metaloader = MetaLoader(metapath)
+    meta = metaloader.getData()
+    handler = FilterMeta()
+    label_line = query[filenum - 1]
+    # label = label_line.split(' ')[-1].strip()
+    label = getLabel(label_line)
+    print("==> Thread %d: Embed meta" % (id))
+    logging.info("==> Thread %d: Embed meta" % (id))
+    res = handler.fit(meta, label)
+    # print("==> Finish meta emb")
+    # logging.info("==> Finish meta emb")
+
+    # Save meta
+    np.savetxt(savemeta, res, fmt='%f', delimiter=',')
+    print("==> Thread %d: Meta emb saved to %s" % (id, savemeta))
+    logging.info("==> Thread %d: Meta emb saved to %s" % (id, savemeta))
+
+
 class TinyTest:
-    def __init__(self, num, max_seq_len):
+    def __init__(self, num, args):
         self.num = num
-        self.max_seq_len = max_seq_len
+        self.max_seq_len = args.maxseqlen
+        self.args = args
 
     def getNum(self):
         return self.num
 
-    def __getLabel(self, labelline):
-        label_idx = labelline.find(' ')
-        label = labelline[label_idx+1:]
-
-        return label.strip()
+    # def __getLabel(self, labelline):
+    #     label_idx = labelline.find(' ')
+    #     label = labelline[label_idx+1:]
+    #
+    #     return label.strip()
 
     def getQueryDataEmb(self, queryfile='queries.txt'):
         print("Get embeddings")
         # Init Queries
         querypath = os.path.join(INFO, queryfile)
+        savequery = os.path.join(EMB, queryfile)
 
         # Read and Emb
         print("Load queries from %s" % querypath)
         logging.info("Load queries from %s" % querypath)
         queryloader = MetaLoader(querypath)
         query = queryloader.getData()
-        qhandler = FilterQuery()
-        print("Embed queries")
-        logging.info("Embed queries")
-        qres = np.array(qhandler.fit(query))
-        print("Finish queries emb")
-        logging.info("Finish queries emb")
+        if not os.path.exists(savequery):
+            qhandler = FilterQuery()
+            print("Embed queries")
+            logging.info("Embed queries")
+            qres = np.array(qhandler.fit(query))
+            print("Finish queries emb")
+            logging.info("Finish queries emb")
 
-        # Save Query
-        savequery = os.path.join(EMB, queryfile)
-        np.savetxt(savequery, qres, fmt='%f', delimiter=',')
-        print("Queries emb save to %s" % savequery)
-        logging.info("Queries emb save to %s" % savequery)
+            # Save Query
+            np.savetxt(savequery, qres, fmt='%f', delimiter=',')
+            print("Queries emb save to %s" % savequery)
+            logging.info("Queries emb save to %s" % savequery)
+        else:
+            print("Query emb already exists %s" % (savequery))
+            logging.info("Query emb already exists %s" % (savequery))
 
         print("Process meta")
         logging.info("Process meta")
         for dataset in DATA_SOURCE:
-            dataset_folder = os.path.join(META_FOLDER, dataset)
+            todolist = []
             for i in range(1, QUERY_NUM+1):
                 # Init
-                filename = 'q%05d.json' % i
-                metapath = os.path.join(dataset_folder, filename)
+                # filename = 'q%05d.json' % i
+                filenum = i
+                todolist.append(filenum)
 
-                # Read and Emb
-                print("==> Load meta from %s" % metapath)
-                logging.info("==> Load meta from %s" % metapath)
-                metaloader = MetaLoader(metapath)
-                meta = metaloader.getData()
-                handler = FilterMeta()
-                label_line = query[i-1]
-                # label = label_line.split(' ')[-1].strip()
-                label = self.__getLabel(label_line)
-                print("==> Embed meta")
-                logging.info("==> Embed meta")
-                res = handler.fit(meta, label)
-                print("==> Finish meta emb")
-                logging.info("==> Finish meta emb")
+            threadlst = []
+            for i in range(self.args.thread):
+                inputlst = todolist[i::self.args.thread]
+                t = MultiThreadAlign(dataset, inputlst, query, i)
+                threadlst.append(t)
+            for thread in threadlst:
+                thread.start()
+            for thread in threadlst:
+                thread.join()
+            print("%s complete" % (dataset))
 
-                # Save meta
-                savemeta = os.path.join(EMB, dataset)
-                savemeta = os.path.join(savemeta, 'q%05d.txt'%i)
-                np.savetxt(savemeta, res, fmt='%f', delimiter=',')
-                print("==> Meta emb saved to %s" % savemeta)
-                logging.info("==> Meta emb saved to %s" % savemeta)
 
             # metatest = ('../data/2017/meta/google/q%04d' % self.num) + '.json'
             # metaloader = MetaLoader(metatest)
@@ -590,6 +625,23 @@ class TinyTest:
 
         return outputpath
 
+class MultiThreadAlign(Thread):
+    def __init__(self, dataset, todo_lst, query, id):
+        super().__init__()
+        self.todo_lst = todo_lst
+        self.dataset = dataset
+        self.id = id
+        self.length = len(todo_lst)
+        self.query = query
+        # print("Thread "+str(id), cmdlist)
+
+    def run(self):
+        # print("Thread " + str(id), self.cmdlist)
+        # output = []
+        for i in self.todo_lst:
+            processMeta(dataset=self.dataset, filenum=i, id=self.id, query=self.query)
+        print("Thread %d finish" % (self.id))
+
 def informal_use():
     # test()
     # testdraw()
@@ -696,6 +748,7 @@ def run():
     parser.add_argument('--compute', action='store_true', help='Compute distance', default=False)
     # parser.add_argument('--cluster', action='store_true', help='Cluster', default=False)
     parser.add_argument('--maxseqlen', '-l', type=int, default=128, help='Max sequeence length')
+    parser.add_argument('--thread', type=int, default=4, help="Thread num.")
     # Optimization options
     # parser.add_argument('--epochs', '-e', type=int, default=1, help='Number of epochs to train.')
     # parser.add_argument('--batch_size', '-b', type=int, default=64, help='Batch size.')
@@ -739,8 +792,9 @@ def run():
     args = parser.parse_args()
 
     # args.genemb = True
+    # args.thread = 2
 
-    handler = TinyTest(1, args.maxseqlen)
+    handler = TinyTest(1, args)
     if args.genemb:
         handler.getQueryDataEmb()
     if args.compute:
@@ -750,7 +804,7 @@ def run():
 
 
 if __name__ == '__main__':
-    bert_util_log = '/home/ydshao/VirtualProjects/WebVision/log/bert_util.log'
+    bert_util_log = '/home/ydshao/VirtualenvProjects/WebVision/log/bert_util.log'
     if not os.path.exists(bert_util_log):
         print("%s not exists" % bert_util_log)
         exit(-1)

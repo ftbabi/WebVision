@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import torchvision.datasets as dset
 import torchvision.transforms as transforms
 import logging
-from train import train, evaluate
+from train import train, evaluate, extract_features
 
 def parse():
     parser = argparse.ArgumentParser(description='Training on WebVision',
@@ -14,6 +14,11 @@ def parse():
     # Positional arguments
     # parser.add_argument('data_path', type=str, help='Root for the Cifar dataset.')
     parser.add_argument('--traindata', type=str, choices=['google', 'flickr', 'all'], help='Choose among google/flickr/all.', default='all')
+    parser.add_argument('--subset', type=int, default=100, help='Select subset of the original data.')
+    # parser.add_argument('--sample', type=int, default=100, help='Sample out subset of the original data.')
+    parser.add_argument('--checkimg', action='store_true', help='Check images\' paths', default=False)
+    parser.add_argument('--printfreq', type=int, default=200, help='Print frequency.')
+    parser.add_argument('--valfreq', type=int, default=2000, help='Validation frequency during training.')
 
     # Data agumentation
     parser.add_argument('--transform', type=str, choices=['crop'],
@@ -21,12 +26,13 @@ def parse():
     parser.add_argument('--shuffle', action='store_true', help='Shuffle the data', default=False)
 
     # Optimization options
-    parser.add_argument('--epochs', '-e', type=int, default=1, help='Number of epochs to train.')
+    parser.add_argument('--epochs', '-e', type=int, default=120, help='Number of epochs to train.')
     parser.add_argument('--batch_size', '-b', type=int, default=64, help='Batch size.')
     parser.add_argument('--learning_rate', '-lr', type=float, default=0.1, help='The Learning Rate.')
     parser.add_argument('--momentum', '-m', type=float, default=0.9, help='Momentum.')
     parser.add_argument('--decay', '-d', type=float, default=0.0001, help='Weight decay (L2 penalty).')
     parser.add_argument('--pretrained', action='store_true', help='Use pretrained model', default=False)
+    parser.add_argument('--weightschedule', type=int, default=30, help='Schedule step size.')
     # parser.add_argument('--test_bs', type=int, default=10)
     # parser.add_argument('--schedule', type=int, nargs='+', default=[150, 225],
     #                     help='Decrease learning rate at these epochs.')
@@ -35,12 +41,13 @@ def parse():
     # Checkpoints
     parser.add_argument('--save', '-s', type=str, default='', help='Folder to save checkpoints.')
     parser.add_argument('--load', '-l', type=str, default='', help='Checkpoint path to resume / test.')
+    parser.add_argument('--feature_dir', type=str, default='', help='Features path to save.')
     # parser.add_argument('--test', '-t', action='store_true', help='Test only flag.')
 
     # Architecture
     parser.add_argument('--classes', type=int, default=5000, help='Number of classes.')
-    parser.add_argument('--model', type=str, choices=['resnext50_32x4d', 'resnext101_32x8d', 'densenet121'],
-                        help='Choose among resnext50_32x4d/densenet121.', default='resnext101_32x8d')
+    parser.add_argument('--model', type=str, choices=['resnext50_32x4d', 'alexnet', 'resnext101_32x8d', 'densenet121', 'resnet50'],
+                        help='Choose among resnext50_32x4d/densenet121.', default='resnet50')
 
     # parser.add_argument('--depth', type=int, default=29, help='Model depth.')
     # parser.add_argument('--cardinality', type=int, default=8, help='Model cardinality (group).')
@@ -48,7 +55,8 @@ def parse():
     # parser.add_argument('--widen_factor', type=int, default=4, help='Widen factor. 4 -> 64, 8 -> 128, ...')
 
     # Acceleration
-    parser.add_argument('--ngpu', type=int, default=4, help='0 = CPU.')
+    parser.add_argument('--ngpu', type=int, default=8, help='0 = CPU.')
+    parser.add_argument('--thread', type=int, default=8, help='Thread for reading images per gpu.')
     # parser.add_argument('--prefetch', type=int, default=2, help='Pre-fetching threads.')
 
     # i/o
@@ -60,6 +68,9 @@ def parse():
     parser.add_argument('--predict', action='store_true',
                         help='predict the answers for test set with trained model', default=False)
     parser.add_argument('--filter', action='store_true', help='Use filtered set', default=False)
+    parser.add_argument('--extract', action='store_true', help='Extract features', default=False)
+    parser.add_argument('--classid_as_label', action='store_true', help='Use class id to train', default=False)
+    parser.add_argument('--random', action='store_true', help='Random select samples', default=False)
 
     # Train config
 
@@ -167,13 +178,30 @@ def init(args):
 if __name__ == '__main__':
     args = parse()
 
+    # For debug
     # args.traindata = 'google'
-    # args.batch_size = 4
-    args.train = True
-    args.save = './checkpoints'
-    # args.load = './checkpoints/resnext50_32x4d-1.pt'
+    # args.batch_size = 512
+    # args.train = True
+    # args.evaluate = True
+    # args.pretrained = True
+    # args.extract = True
+    # args.feature_dir = '/mnt/SSD/webvision/2017/features'
+    # args.log = '/home/ydshao/VirtualenvProjects/WebVision/log/debug'
+    # args.save = './checkpoints'
+    # args.load = './checkpoints/resnext101_32x8d-google-1.pt'
+    # args.load = '/home/ydshao/VirtualenvProjects/WebVision/checkpoints/resnet50-google-100-50.pt'
+    # args.model='alexnet'
+    # args.classes = 2204
+    # args.classid_as_label = True
+    # args.random=True
+    # args.classes=1000
+    # args.subset=10
 
     init(args)
+    if args.classid_as_label:
+        print("Warning: Use class id as lable. Make sure the number of classes is true")
+    print(args)
+    logging.info(args)
 
 
     # train_loader = torch.utils.data.DataLoader(train_data, batch_size=args.batch_size, shuffle=True,
@@ -185,6 +213,8 @@ if __name__ == '__main__':
         train(args)
     if args.evaluate:
         evaluate(args)
+    if args.extract:
+        extract_features(args)
 
 
 

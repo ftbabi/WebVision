@@ -1,1 +1,1 @@
-python cli.py --traindata=google --epochs=1 --ngpu=8 --batch_size=256 --save=/home/ydshao/VirtualenvProjects/WebVsion/checkpoints --log=/home/ydshao/VirtualenvProjects/WebVision/log --train
+python cli.py --model=alexnet --traindata=google --classes=1000 --weightschedule=30 --epochs=120 --ngpu=8 --batch_size=512 --subset=100 --learning_rate=0.1 --save=/home/ydshao/VirtualenvProjects/WebVision/checkpoints --log=/home/ydshao/VirtualenvProjects/WebVision/log --train --shuffle

@@ -1,0 +1,1 @@
+python cli.py --traindata=google --classes=1000 --ngpu=8 --batch_size=512 --subset=100 --feature_dir=/mnt/SSD/webvision/2017/features --log=/home/ydshao/VirtualenvProjects/WebVision/log --extract
